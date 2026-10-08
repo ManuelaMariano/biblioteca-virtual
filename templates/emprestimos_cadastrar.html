@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Cadastro de Empréstimos - Biblioteca Virtual</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+</head>
+
+<body class="d-flex flex-column min-vh-100">
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+
+        <a class="navbar-brand" href="{{ url_for('inicio') }}">Biblioteca Virtual</a>
+
+        <!-- botão que aparece no celular para abrir o menu -->
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="menu">
+            <div class="navbar-nav me-auto">
+                <a class="nav-link" href="{{ url_for('inicio') }}">Início</a>
+                <a class="nav-link" href="{{ url_for('usuarios') }}">Usuários</a>
+                <a class="nav-link" href="{{ url_for('livros') }}">Livros</a>
+                <a class="nav-link active" href="{{ url_for('emprestimos') }}">Empréstimos</a>
+            </div>
+            <a class="btn btn-outline-light btn-sm" href="{{ url_for('login') }}">Sair</a>
+        </div>
+
+    </div>
+</nav>
+
+<div class="container mt-4 mb-4 flex-grow-1">
+
+    <h2 class="mb-4">Cadastro de Empréstimos</h2>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+
+            <!-- method="post": os dados são enviados para a rota, que salva na lista -->
+            <form method="post" action="{{ url_for('cadastrar_emprestimo') }}">
+
+            <div class="row g-3 mb-3">
+                <div class="col-12 col-md-6">
+                    <label class="form-label">Usuário:</label>
+                    <select name="usuario" class="form-select" required>
+                        <option value="">-- ESCOLHA --</option>
+                        {% for u in usuarios %}
+                        <option>{{ u.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-md-6">
+                    <label class="form-label">Livro:</label>
+                    <select name="livro" class="form-select" required>
+                        <option value="">-- ESCOLHA --</option>
+                        {% for l in livros %}
+                        <option>{{ l.titulo }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="row g-3 mb-3">
+                <div class="col-12 col-sm-6">
+                    <label class="form-label">Data do Empréstimo:</label>
+                    <input type="date" name="inicio" class="form-control" required>
+                </div>
+                <div class="col-12 col-sm-6">
+                    <label class="form-label">Devolução Prevista:</label>
+                    <input type="date" name="devolucao" class="form-control" required>
+                </div>
+            </div>
+            <div class="row g-3 mb-4">
+                <div class="col-12 col-md-6">
+                    <label class="form-label">Status:</label>
+                    <select name="status" class="form-select" required>
+                        <option value="">-- ESCOLHA --</option>
+                        <option>Em andamento</option>
+                        <option>Devolvido</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-6">
+                    <label class="form-label">Observação:</label>
+                    <input type="text" name="observacao" class="form-control">
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between botoes-form">
+                <a href="{{ url_for('emprestimos') }}" class="btn btn-primary">Voltar</a>
+                <button type="reset" class="btn btn-secondary">Limpar</button>
+                <button type="submit" class="btn btn-success">Salvar</button>
+            </div>
+
+            </form>
+
+        </div>
+    </div>
+
+</div>
+
+<footer class="bg-dark text-light text-center py-3 mt-auto">
+    Biblioteca - Bia e Manu
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+
+</html>

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Empréstimos - Biblioteca Virtual</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+</head>
+
+<body class="d-flex flex-column min-vh-100">
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+
+        <a class="navbar-brand" href="{{ url_for('inicio') }}">Biblioteca Virtual</a>
+
+        <!-- botão que aparece no celular para abrir o menu -->
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="menu">
+            <div class="navbar-nav me-auto">
+                <a class="nav-link" href="{{ url_for('inicio') }}">Início</a>
+                <a class="nav-link" href="{{ url_for('usuarios') }}">Usuários</a>
+                <a class="nav-link" href="{{ url_for('livros') }}">Livros</a>
+                <a class="nav-link active" href="{{ url_for('emprestimos') }}">Empréstimos</a>
+            </div>
+            <a class="btn btn-outline-light btn-sm" href="{{ url_for('login') }}">Sair</a>
+        </div>
+
+    </div>
+</nav>
+
+<div class="container mt-4 mb-4 flex-grow-1">
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Listagem de Empréstimos</h2>
+        <a href="{{ url_for('cadastrar_emprestimo') }}" class="btn btn-success">Adicionar</a>
+    </div>
+
+    <!-- table-responsive: a tabela ganha rolagem lateral no celular -->
+    <div class="table-responsive">
+        <table class="table table-striped table-bordered bg-white">
+            <thead>
+                <tr><th>ID</th><th>Usuário</th><th>Livro</th><th>Empréstimo</th><th>Devolução</th><th>Status</th><th>Ações</th></tr>
+            </thead>
+            <tbody>
+
+            <!-- FOR: repete uma linha da tabela para cada item da lista -->
+            {% for e in emprestimos %}
+            <tr>
+                <td>{{ e.id }}</td>
+                <td>{{ e.usuario }}</td>
+                <td>{{ e.livro }}</td>
+                <td>{{ e.inicio | data_br }}</td>
+                <td>{{ e.devolucao | data_br }}</td>
+                <td>{{ e.status }}</td>
+                <td>
+                    <a href="{{ url_for('editar_emprestimo', id=e.id) }}" class="btn btn-warning btn-sm">Editar</a>
+
+                    <form method="post" action="{{ url_for('excluir_emprestimo', id=e.id) }}" class="d-inline"
+                          onsubmit="return confirm('Deseja excluir?')">
+                        <button type="submit" class="btn btn-danger btn-sm">Excluir</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+
+            <!-- IF: se a lista estiver vazia, mostra uma mensagem -->
+            {% if not emprestimos %}
+            <tr>
+                <td colspan="7" class="text-center text-muted">Nenhum empréstimo registrado.</td>
+            </tr>
+            {% endif %}
+
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<footer class="bg-dark text-light text-center py-3 mt-auto">
+    Biblioteca - Bia e Manu
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+
+</html>
