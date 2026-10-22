@@ -60,7 +60,6 @@ def buscar(lista, id):
     return None
 
 
-# Filtro usado no HTML: {{ data | data_br }}  ->  2026-10-01 vira 01/10/2026
 @app.template_filter("data_br")
 def data_br(texto):
     if not texto:
