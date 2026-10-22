@@ -8,14 +8,11 @@ ESTADOS = ["AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT",
            "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO",
            "RR", "SC", "SP", "SE", "TO"]
 
-# Campos de cada formulário (são os mesmos "name" dos inputs no HTML)
 CAMPOS_USUARIO = ["nome", "email", "celular", "nascimento", "cpf", "nivel",
                   "cep", "endereco", "numero", "complemento", "cidade", "estado"]
 CAMPOS_LIVRO = ["titulo", "autor", "categoria", "ano", "quantidade", "isbn", "editora"]
 CAMPOS_EMPRESTIMO = ["usuario", "livro", "inicio", "devolucao", "status", "observacao"]
 
-# "Banco de dados" provisório: listas de dicionários.
-# Os dados voltam ao início quando o servidor é reiniciado.
 lista_usuarios = [
     {"id": 1, "nome": "Maria Silva", "email": "maria@email.com",
      "celular": "(14) 99999-9999", "nascimento": "1998-05-12",
@@ -48,7 +45,6 @@ lista_emprestimos = [
 ]
 
 
-# ---------- Funções auxiliares ----------
 def proximo_id(lista):
     maior = 0
     for item in lista:
@@ -72,19 +68,16 @@ def data_br(texto):
     return datetime.strptime(texto, "%Y-%m-%d").strftime("%d/%m/%Y")
 
 
-# ---------- LOGIN (página sem menu) ----------
 @app.route("/")
 def login():
     return render_template("login.html")
 
 
-# ---------- INÍCIO ----------
 @app.route("/inicio")
 def inicio():
     return render_template("index.html")
 
 
-# ---------- USUÁRIOS ----------
 @app.route("/usuarios")
 def usuarios():
     return render_template("usuarios_listar.html", usuarios=lista_usuarios)
@@ -121,7 +114,6 @@ def excluir_usuario(id):
     return redirect(url_for("usuarios"))
 
 
-# ---------- LIVROS ----------
 @app.route("/livros")
 def livros():
     return render_template("livros_listar.html", livros=lista_livros)
@@ -158,7 +150,6 @@ def excluir_livro(id):
     return redirect(url_for("livros"))
 
 
-# ---------- EMPRÉSTIMOS ----------
 @app.route("/emprestimos")
 def emprestimos():
     return render_template("emprestimos_listar.html", emprestimos=lista_emprestimos)
