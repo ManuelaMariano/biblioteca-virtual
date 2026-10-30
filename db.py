@@ -68,3 +68,12 @@ def execute_query(sql, params=None, fetch=False):
     finally:
         cursor.close()
         conn.close()   # devolve ao pool, não fecha fisicamente
+
+
+def execute_one(sql, params=None):
+    """
+    Executa um SELECT e retorna apenas a primeira linha (ou None).
+    Útil para buscar um registro por ID.
+    """
+    resultados = execute_query(sql, params, fetch=True)
+    return resultados[0] if resultados else None
