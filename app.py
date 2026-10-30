@@ -71,38 +71,42 @@ def data_br(texto):
 def login():
     return render_template("login.html")
 
+@app.route('/dashboard')
+def dashboard():
+    return render_template(
+        'dashboard.html',
+        total_usuarios=len(lista_usuarios),
+        total_livros=len(lista_livros),
+        emprestimos_ativos=sum(1 for e in lista_emprestimos if e['status'] == 'Em andamento'),
+        livros_disponiveis=max(0, sum(int(l['quantidade']) for l in lista_livros) - sum(1 for e in lista_emprestimos if e['status'] == 'Em andamento'))
+    )
 
-@app.route("/inicio")
-def inicio():
-    return render_template("index.html")
+@app.route("/usuarios/listar")
+def listar_usuarios():
+    return render_template("usuarios/usuarios_listar.html", usuarios=lista_usuarios)
 
 
-@app.route("/usuarios")
-def usuarios():
-    return render_template("usuarios_listar.html", usuarios=lista_usuarios)
-
-
-@app.route("/usuarios/cadastrar", methods=["GET", "POST"])
-def cadastrar_usuario():
+@app.route("/usuarios/inserir", methods=["GET", "POST"])
+def inserir_usuarios():
     if request.method == "POST":
         novo = {"id": proximo_id(lista_usuarios)}
         for campo in CAMPOS_USUARIO:
             novo[campo] = request.form[campo]
         lista_usuarios.append(novo)
-        return redirect(url_for("usuarios"))
-    return render_template("usuarios_cadastrar.html", estados=ESTADOS)
+        return redirect(url_for("listar_usuarios"))
+    return render_template("usuarios/usuarios_inserir.html", estados=ESTADOS)
 
 
 @app.route("/usuarios/editar/<int:id>", methods=["GET", "POST"])
 def editar_usuario(id):
     usuario = buscar(lista_usuarios, id)
     if usuario is None:
-        return redirect(url_for("usuarios"))
+        return redirect(url_for("listar_usuarios"))
     if request.method == "POST":
         for campo in CAMPOS_USUARIO:
             usuario[campo] = request.form[campo]
-        return redirect(url_for("usuarios"))
-    return render_template("usuarios_editar.html", usuario=usuario, estados=ESTADOS)
+        return redirect(url_for("listar_usuarios"))
+    return render_template("usuarios/usuarios_editar.html", usuario=usuario, estados=ESTADOS)
 
 
 @app.route("/usuarios/excluir/<int:id>", methods=["POST"])
@@ -110,35 +114,35 @@ def excluir_usuario(id):
     usuario = buscar(lista_usuarios, id)
     if usuario is not None:
         lista_usuarios.remove(usuario)
-    return redirect(url_for("usuarios"))
+    return redirect(url_for("listar_usuarios"))
 
 
-@app.route("/livros")
-def livros():
-    return render_template("livros_listar.html", livros=lista_livros)
+@app.route("/livros/listar")
+def listar_livros():
+    return render_template("livros/livros_listar.html", livros=lista_livros)
 
 
-@app.route("/livros/cadastrar", methods=["GET", "POST"])
-def cadastrar_livro():
+@app.route("/livros/inserir", methods=["GET", "POST"])
+def inserir_livros():
     if request.method == "POST":
         novo = {"id": proximo_id(lista_livros)}
         for campo in CAMPOS_LIVRO:
             novo[campo] = request.form[campo]
         lista_livros.append(novo)
-        return redirect(url_for("livros"))
-    return render_template("livros_cadastrar.html")
+        return redirect(url_for("listar_livros"))
+    return render_template("livros/livros_inserir.html")
 
 
 @app.route("/livros/editar/<int:id>", methods=["GET", "POST"])
 def editar_livro(id):
     livro = buscar(lista_livros, id)
     if livro is None:
-        return redirect(url_for("livros"))
+        return redirect(url_for("listar_livros"))
     if request.method == "POST":
         for campo in CAMPOS_LIVRO:
             livro[campo] = request.form[campo]
-        return redirect(url_for("livros"))
-    return render_template("livros_editar.html", livro=livro)
+        return redirect(url_for("listar_livros"))
+    return render_template("livros/livros_editar.html", livro=livro)
 
 
 @app.route("/livros/excluir/<int:id>", methods=["POST"])
@@ -146,23 +150,23 @@ def excluir_livro(id):
     livro = buscar(lista_livros, id)
     if livro is not None:
         lista_livros.remove(livro)
-    return redirect(url_for("livros"))
+    return redirect(url_for("listar_livros"))
 
 
-@app.route("/emprestimos")
-def emprestimos():
-    return render_template("emprestimos_listar.html", emprestimos=lista_emprestimos)
+@app.route("/emprestimos/listar")
+def listar_emprestimos():
+    return render_template("emprestimos/emprestimos_listar.html", emprestimos=lista_emprestimos)
 
 
-@app.route("/emprestimos/cadastrar", methods=["GET", "POST"])
-def cadastrar_emprestimo():
+@app.route("/emprestimos/inserir", methods=["GET", "POST"])
+def inserir_emprestimos():
     if request.method == "POST":
         novo = {"id": proximo_id(lista_emprestimos)}
         for campo in CAMPOS_EMPRESTIMO:
             novo[campo] = request.form[campo]
         lista_emprestimos.append(novo)
-        return redirect(url_for("emprestimos"))
-    return render_template("emprestimos_cadastrar.html",
+        return redirect(url_for("listar_emprestimos"))
+    return render_template("emprestimos/emprestimos_inserir.html",
                            usuarios=lista_usuarios, livros=lista_livros)
 
 
@@ -170,12 +174,12 @@ def cadastrar_emprestimo():
 def editar_emprestimo(id):
     emprestimo = buscar(lista_emprestimos, id)
     if emprestimo is None:
-        return redirect(url_for("emprestimos"))
+        return redirect(url_for("listar_emprestimos"))
     if request.method == "POST":
         for campo in CAMPOS_EMPRESTIMO:
             emprestimo[campo] = request.form[campo]
-        return redirect(url_for("emprestimos"))
-    return render_template("emprestimos_editar.html", emprestimo=emprestimo,
+        return redirect(url_for("listar_emprestimos"))
+    return render_template("emprestimos/emprestimos_editar.html", emprestimo=emprestimo,
                            usuarios=lista_usuarios, livros=lista_livros)
 
 
@@ -184,7 +188,7 @@ def excluir_emprestimo(id):
     emprestimo = buscar(lista_emprestimos, id)
     if emprestimo is not None:
         lista_emprestimos.remove(emprestimo)
-    return redirect(url_for("emprestimos"))
+    return redirect(url_for("listar_emprestimos"))
 
 
 if __name__ == "__main__":

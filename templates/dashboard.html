@@ -1,0 +1,138 @@
+{% extends 'layout/base_menu.html' %}
+{% block titulo %}Dashboard - Biblioteca Virtual{% endblock %}
+{% block conteudo %}
+<main class="container mt-4 mb-5 flex-grow-1">
+
+        <h1 class="fw-bold">Dashboard</h1>
+
+        <p class="text-secondary mb-4">
+            Bem-vindo ao painel de gerenciamento da Biblioteca Virtual.
+        </p>
+
+        <!-- INDICADORES -->
+        <div class="row g-3 mb-4">
+
+            <!-- USUÁRIOS -->
+            <div class="col-12 col-sm-6 col-lg-3">
+                <div class="card painel-card">
+                    <div class="card-body">
+
+                        <p class="text-secondary">
+                            Usuários cadastrados
+                        </p>
+
+                        <div class="numero text-primary">
+                            {{ total_usuarios | default('—') }}
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- LIVROS -->
+            <div class="col-12 col-sm-6 col-lg-3">
+                <div class="card painel-card">
+                    <div class="card-body">
+
+                        <p class="text-secondary">
+                            Livros cadastrados
+                        </p>
+
+                        <div class="numero text-success">
+                            {{ total_livros | default('—') }}
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- EMPRÉSTIMOS -->
+            <div class="col-12 col-sm-6 col-lg-3">
+                <div class="card painel-card">
+                    <div class="card-body">
+
+                        <p class="text-secondary">
+                            Empréstimos ativos
+                        </p>
+
+                        <div class="numero text-warning">
+                            {{ emprestimos_ativos | default('—') }}
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- DISPONÍVEIS -->
+            <div class="col-12 col-sm-6 col-lg-3">
+                <div class="card painel-card">
+                    <div class="card-body">
+
+                        <p class="text-secondary">
+                            Livros disponíveis
+                        </p>
+
+                        <div class="numero text-info">
+                            {{ livros_disponiveis | default('—') }}
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ACESSO RÁPIDO -->
+        <h2 class="h4 mb-3">Acesso rápido</h2>
+
+        <div class="row g-3">
+
+            <div class="col-md-4">
+                <a href="{{ url_for('listar_usuarios') }}"
+                   class="card painel-card acesso">
+
+                    <div class="card-body">
+                        <h5>Usuários</h5>
+
+                        <p class="text-secondary">
+                            Consultar e gerenciar usuários.
+                        </p>
+                    </div>
+
+                </a>
+            </div>
+
+            <div class="col-md-4">
+                <a href="{{ url_for('listar_livros') }}"
+                   class="card painel-card acesso">
+
+                    <div class="card-body">
+                        <h5>Livros</h5>
+
+                        <p class="text-secondary">
+                            Consultar e gerenciar livros.
+                        </p>
+                    </div>
+
+                </a>
+            </div>
+
+            <div class="col-md-4">
+                <a href="{{ url_for('listar_emprestimos') }}"
+                   class="card painel-card acesso">
+
+                    <div class="card-body">
+                        <h5>Empréstimos</h5>
+
+                        <p class="text-secondary">
+                            Consultar e gerenciar empréstimos.
+                        </p>
+                    </div>
+
+                </a>
+            </div>
+
+        </div>
+
+    </main>
+{% endblock %}

@@ -1,0 +1,101 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>{% block titulo %}Biblioteca Virtual{% endblock %}</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+
+    <style>
+        body {
+            background-color: #f6f7fb;
+        }
+
+        .painel-card {
+            border: 0;
+            border-radius: 14px;
+            box-shadow: 0 3px 16px rgba(0,0,0,0.06);
+        }
+
+        .numero {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .acesso {
+            text-decoration: none;
+        }
+
+        .acesso:hover {
+            transform: translateY(-2px);
+            transition: 0.2s;
+        }
+    </style>
+</head>
+
+<body class="d-flex flex-column min-vh-100">
+
+    <!-- MENU DE NAVEGAÇÃO -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+
+            <a class="navbar-brand" href="{{ url_for('dashboard') }}">
+                Biblioteca Virtual
+            </a>
+
+            <button class="navbar-toggler" type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#menu">
+
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="menu">
+
+                <div class="navbar-nav me-auto">
+
+                    <a class="nav-link" href="{{ url_for('dashboard') }}">
+                        Dashboard
+                    </a>
+
+                    <a class="nav-link" href="{{ url_for('listar_usuarios') }}">
+                        Usuários
+                    </a>
+
+                    <a class="nav-link" href="{{ url_for('listar_livros') }}">
+                        Livros
+                    </a>
+
+                    <a class="nav-link" href="{{ url_for('listar_emprestimos') }}">
+                        Empréstimos
+                    </a>
+
+                </div>
+
+                <a class="btn btn-outline-light btn-sm"
+                   href="{{ url_for('login') }}">
+                    Sair
+                </a>
+
+            </div>
+        </div>
+    </nav>
+
+    <!-- MIOLO DAS PÁGINAS -->
+    {% block conteudo %}
+    {% endblock %}
+
+    <!-- RODAPÉ -->
+    <footer class="bg-dark text-light text-center py-3 mt-auto">
+        Biblioteca - Bia e Manu
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

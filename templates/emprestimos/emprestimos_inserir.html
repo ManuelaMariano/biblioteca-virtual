@@ -1,0 +1,70 @@
+{% extends 'layout/base_menu.html' %}
+{% block titulo %}Cadastro de Empréstimos - Biblioteca Virtual{% endblock %}
+{% block conteudo %}
+<div class="container mt-4 mb-4 flex-grow-1">
+
+    <h2 class="mb-4">Cadastro de Empréstimos</h2>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+
+            <form method="post" action="{{ url_for('inserir_emprestimos') }}">
+
+            <div class="row g-3 mb-3">
+                <div class="col-12 col-md-6">
+                    <label class="form-label">Usuário:</label>
+                    <select name="usuario" class="form-select" required>
+                        <option value="">-- ESCOLHA --</option>
+                        {% for u in usuarios %}
+                        <option>{{ u.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-md-6">
+                    <label class="form-label">Livro:</label>
+                    <select name="livro" class="form-select" required>
+                        <option value="">-- ESCOLHA --</option>
+                        {% for l in livros %}
+                        <option>{{ l.titulo }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="row g-3 mb-3">
+                <div class="col-12 col-sm-6">
+                    <label class="form-label">Data do Empréstimo:</label>
+                    <input type="date" name="inicio" class="form-control" required>
+                </div>
+                <div class="col-12 col-sm-6">
+                    <label class="form-label">Devolução Prevista:</label>
+                    <input type="date" name="devolucao" class="form-control" required>
+                </div>
+            </div>
+            <div class="row g-3 mb-4">
+                <div class="col-12 col-md-6">
+                    <label class="form-label">Status:</label>
+                    <select name="status" class="form-select" required>
+                        <option value="">-- ESCOLHA --</option>
+                        <option>Em andamento</option>
+                        <option>Devolvido</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-6">
+                    <label class="form-label">Observação:</label>
+                    <input type="text" name="observacao" class="form-control">
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between botoes-form">
+                <a href="{{ url_for('listar_emprestimos') }}" class="btn btn-primary">Voltar</a>
+                <button type="reset" class="btn btn-secondary">Limpar</button>
+                <button type="submit" class="btn btn-success">Salvar</button>
+            </div>
+
+            </form>
+
+        </div>
+    </div>
+
+</div>
+{% endblock %}
