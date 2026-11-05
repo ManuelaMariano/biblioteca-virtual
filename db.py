@@ -1,36 +1,32 @@
-# db.py — Módulo central de acesso ao banco de dados
-# Qualquer arquivo que precise do banco importa apenas este módulo
+# Módulo de acesso ao banco de dados.
+# Mantido para uma etapa futura; o app.py desta atividade ainda não usa MySQL.
 
 import mysql.connector
 from mysql.connector import Error, pooling
 
-# Parâmetros de conexão — editados apenas aqui, usados em todo o sistema
 _DB_PARAMS = {
-    'host':               'localhost',
-    'user':               'root',
-    'password':           '',
-    'database':           'bibliotecavirtual',
-    'charset':            'utf8mb4',
-    'sql_mode':           ('STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,'
-                           'ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'),
-    'time_zone':          '-03:00',   # Horário de Brasília
-    'use_pure':           True,       # Python puro — compatível com todos os ambientes
-    'connection_timeout': 10,         # desiste após 10s sem resposta
-    'autocommit':         False,      # exige commit() explícito
+    'host': 'localhost',
+    'user': 'root',
+    'password': '',
+    'database': 'bibliotecavirtual',
+    'charset': 'utf8mb4',
+    'sql_mode': ('STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,'
+                 'ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'),
+    'time_zone': '-03:00',
+    'use_pure': True,
+    'connection_timeout': 10,
+    'autocommit': False,
 }
 
-# Pool criado uma única vez quando o módulo é carregado pela primeira vez.
-# conn.close() devolve a conexão ao pool — não fecha fisicamente.
 _pool = pooling.MySQLConnectionPool(
     pool_name='webapp_pool',
-    pool_size=5,           # conexões abertas permanentemente
+    pool_size=5,
     pool_reset_session=True,
     **_DB_PARAMS
 )
 
 
 def get_connection():
-    """Retorna uma conexão do pool. Levanta Exception em caso de falha."""
     try:
         return _pool.get_connection()
     except Error as e:
@@ -38,42 +34,24 @@ def get_connection():
 
 
 def execute_query(sql, params=None, fetch=False):
-    """
-    Executa uma query SQL de forma segura.
-
-    Parâmetros:
-        sql    — string SQL com %s como placeholders
-        params — tupla ou lista com os valores dos placeholders
-        fetch  — True para SELECT (retorna lista de dicts); False para INSERT/UPDATE/DELETE
-
-    Retorna:
-        fetch=True  — lista de dicionários (cada linha = {'coluna': valor})
-        fetch=False — número de linhas afetadas
-    """
     conn = get_connection()
+    cursor = None
     try:
-        # dictionary=True: cada linha retorna como dicionário — usuario['nome'] em vez de usuario[0]
         cursor = conn.cursor(dictionary=True)
         cursor.execute(sql, params or ())
-
         if fetch:
-            return cursor.fetchall()   # retorna todas as linhas
-        else:
-            conn.commit()              # confirma a transação
-            return cursor.rowcount     # número de linhas afetadas
-
+            return cursor.fetchall()
+        conn.commit()
+        return cursor.rowcount
     except Error as e:
-        conn.rollback()  # desfaz alterações parciais em caso de erro
+        conn.rollback()
         raise Exception(f'Erro ao executar query: {e}')
     finally:
-        cursor.close()
-        conn.close()   # devolve ao pool, não fecha fisicamente
+        if cursor is not None:
+            cursor.close()
+        conn.close()
 
 
 def execute_one(sql, params=None):
-    """
-    Executa um SELECT e retorna apenas a primeira linha (ou None).
-    Útil para buscar um registro por ID.
-    """
     resultados = execute_query(sql, params, fetch=True)
     return resultados[0] if resultados else None
