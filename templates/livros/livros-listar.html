@@ -1,0 +1,20 @@
+{% extends 'layout/base_menu.html' %}
+{% block titulo %}Livros - Biblioteca Virtual{% endblock %}
+{% block conteudo %}
+<div class="">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Listagem de Livros</h2>
+    <a href="{{ url_for('inserir_livro') }}" class="btn btn-primary"><i class="bi bi-book me-1"></i> Cadastrar Livro</a>
+  </div>
+  <p class="text-muted small">Dados de exemplo, apenas para apresentar a página.</p>
+  <div class="card border-0 shadow-sm rounded-3"><div class="card-body"><div class="table-responsive">
+    <table class="table table-hover table-striped align-middle mb-0">
+      <thead><tr><th>ID</th><th>Título</th><th>Autor</th><th>Categoria</th><th>Ano</th><th>Quantidade</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Dom Casmurro</td><td>Machado de Assis</td><td>Romance</td><td>1899</td><td>3</td></tr>
+        <tr><td>2</td><td>O Pequeno Príncipe</td><td>Antoine de Saint-Exupéry</td><td>Ficção</td><td>1943</td><td>5</td></tr>
+      </tbody>
+    </table>
+  </div></div></div>
+</div>
+{% endblock %}
