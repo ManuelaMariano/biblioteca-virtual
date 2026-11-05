@@ -1,0 +1,20 @@
+{% extends 'layout/base_menu.html' %}
+{% block titulo %}Empréstimos - Biblioteca Virtual{% endblock %}
+{% block conteudo %}
+<div class="">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Listagem de Empréstimos</h2>
+    <a href="{{ url_for('inserir_emprestimo') }}" class="btn btn-primary"><i class="bi bi-journal-arrow-up me-1"></i> Cadastrar Empréstimo</a>
+  </div>
+  <p class="text-muted small">Dados de exemplo, apenas para apresentar a página.</p>
+  <div class="card border-0 shadow-sm rounded-3"><div class="card-body"><div class="table-responsive">
+    <table class="table table-hover table-striped align-middle mb-0">
+      <thead><tr><th>ID</th><th>Usuário</th><th>Livro</th><th>Empréstimo</th><th>Devolução</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Maria Silva</td><td>Dom Casmurro</td><td>01/10/2026</td><td>15/10/2026</td><td>Em andamento</td></tr>
+        <tr><td>2</td><td>João Souza</td><td>O Pequeno Príncipe</td><td>20/09/2026</td><td>04/10/2026</td><td>Devolvido</td></tr>
+      </tbody>
+    </table>
+  </div></div></div>
+</div>
+{% endblock %}
