@@ -1,0 +1,9 @@
+{% extends 'layout/base_limpa.html' %}
+{% block titulo %}Início - Biblioteca Virtual{% endblock %}
+{% block conteudo %}
+<div class="text-center">
+  <h1 class="fw-bold">Biblioteca Virtual</h1>
+  <p class="text-muted">Sistema de gerenciamento de usuários, livros e empréstimos.</p>
+  <a href="{{ url_for('inicio') }}" class="btn btn-primary">Ir para o login</a>
+</div>
+{% endblock %}
