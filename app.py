@@ -378,8 +378,13 @@ def login():
 
         flash('E-mail ou senha incorretos.', 'danger')
 
+
+
     return render_template('login.html', email=email)
 
+@app.route('/recuperar-senha')
+def recuperar_senha():
+    return render_template('recuperar-senha.html')
 
 @app.route('/logout', methods=['POST'])
 def logout():
