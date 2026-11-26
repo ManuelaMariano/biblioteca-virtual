@@ -1,0 +1,58 @@
+{% extends 'layout/base_menu.html' %}
+
+{% block titulo_aba %}Cadastrar Empréstimo — Biblioteca Virtual{% endblock %}
+
+{% block conteudo %}
+<h1 class="h2 mb-2">Cadastrar Empréstimo</h1>
+<p class="text-body-secondary">Formulário demonstrativo. A gravação no banco fica para a próxima etapa.</p>
+
+<div class="card">
+  <div class="card-body">
+    <form action="{{ url_for('listar_emprestimos') }}" method="get">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label for="usuario" class="form-label">Usuário</label>
+          <select class="form-select" id="usuario" name="usuario" required>
+            <option value="">-- ESCOLHA --</option>
+            <option>Maria Silva</option>
+            <option>João Souza</option>
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label for="livro" class="form-label">Livro</label>
+          <select class="form-select" id="livro" name="livro" required>
+            <option value="">-- ESCOLHA --</option>
+            <option>Dom Casmurro</option>
+            <option>O Pequeno Príncipe</option>
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label for="inicio" class="form-label">Data do Empréstimo</label>
+          <input class="form-control" id="inicio" name="inicio" type="date" required>
+        </div>
+        <div class="col-md-6">
+          <label for="devolucao" class="form-label">Devolução Prevista</label>
+          <input class="form-control" id="devolucao" name="devolucao" type="date" required>
+        </div>
+        <div class="col-md-6">
+          <label for="status" class="form-label">Status</label>
+          <select class="form-select" id="status" name="status" required>
+            <option>Em andamento</option>
+            <option>Devolvido</option>
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label for="observacao" class="form-label">Observação</label>
+          <textarea class="form-control" id="observacao" name="observacao" rows="2"></textarea>
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-between gap-2 mt-4">
+        <a href="{{ url_for('listar_emprestimos') }}" class="btn btn-outline-secondary">Voltar</a>
+        <button type="reset" class="btn btn-secondary">Limpar</button>
+        <button type="submit" class="btn btn-primary">Salvar (Demo)</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
