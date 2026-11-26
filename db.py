@@ -3,7 +3,6 @@ import os
 from dotenv import load_dotenv
 from mysql.connector import Error, pooling
 
-# Lê o arquivo .env e coloca cada linha dele nas variáveis de ambiente do programa.
 load_dotenv()
 
 if os.getenv('DB_NAME') is None:
@@ -20,11 +19,12 @@ CONFIGURACAO = {
         'STRICT_TRANS_TABLES,NO_ZERO_DATE,'
         'ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'
     ),
-    'time_zone': '-03:00',  # horário de Brasília, igual em qualquer computador
-    'use_pure': True,  # conector em Python puro, evita erros com XAMPP e MySQL juntos
+    'time_zone': '-03:00',
+    'use_pure': True,
 }
 
-pool = pooling.MySQLConnectionPool(pool_name='gestao_pool', pool_size=5, **CONFIGURACAO)
+pool = pooling.MySQLConnectionPool(pool_name='biblioteca_pool', pool_size=5, **CONFIGURACAO)
+
 
 def execute_query(sql, params=None, fetch=False):
     if params is None:
@@ -49,6 +49,7 @@ def execute_query(sql, params=None, fetch=False):
     finally:
         cursor.close()
         conexao.close()
+
 
 def execute_one(sql, params=None):
     linhas = execute_query(sql, params, fetch=True)
@@ -76,6 +77,3 @@ def execute_insert(sql, params=None):
     finally:
         cursor.close()
         conexao.close()
-
-
-
