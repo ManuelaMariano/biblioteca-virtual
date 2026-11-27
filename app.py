@@ -136,7 +136,7 @@ def logout():
 @app.route('/dashboard')
 def dashboard():
     if 'id_usuario' not in session:
-        flash('Entre para continuar.', 'warning')
+        flash('Entre para continuar.', 'danger')
         return redirect(url_for('login'))
 
     # Conta as linhas de cada tabela para os cartões da Home
@@ -161,7 +161,7 @@ def dashboard():
 @app.route('/perfis')
 def listar_perfis():
     if 'id_usuario' not in session:
-        flash('Entre para continuar.', 'warning')
+        flash('Entre para continuar.', 'danger')
         return redirect(url_for('login'))
 
     # Busca a lista de perfis na tabela do banco
@@ -176,7 +176,7 @@ def listar_perfis():
 @app.route('/perfis/inserir', methods=['GET', 'POST'])
 def inserir_perfil():
     if 'id_usuario' not in session:
-        flash('Entre para continuar.', 'warning')
+        flash('Entre para continuar.', 'danger')
         return redirect(url_for('login'))
 
     # Inicializa variáveis para cada campo do formulário
@@ -230,7 +230,7 @@ def inserir_perfil():
 @app.route('/perfis/<int:id_perfil>/editar', methods=['GET', 'POST'])
 def editar_perfil(id_perfil):
     if 'id_usuario' not in session:
-        flash('Entre para continuar.', 'warning')
+        flash('Entre para continuar.', 'danger')
         return redirect(url_for('login'))
 
     # Busca o perfil pelo código que veio no endereço
@@ -293,7 +293,7 @@ def editar_perfil(id_perfil):
 @app.route('/perfis/<int:id_perfil>/excluir', methods=['POST'])
 def excluir_perfil(id_perfil):
     if 'id_usuario' not in session:
-        flash('Entre para continuar.', 'warning')
+        flash('Entre para continuar.', 'danger')
         return redirect(url_for('login'))
 
     # Busca o perfil: confirma que ele existe e traz o nome para a mensagem
