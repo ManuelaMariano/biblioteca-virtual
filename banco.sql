@@ -1,4 +1,4 @@
--- DROP DATABASE IF EXISTS bibliotecavirtual; -- use somente se quiser apagar tudo e recomeçar
+-- DROP DATABASE IF EXISTS bibliotecavirtual; -- tire o "--" só se quiser apagar tudo e recomeçar do zero
 
 CREATE DATABASE IF NOT EXISTS bibliotecavirtual
     CHARACTER SET utf8mb4
@@ -39,8 +39,6 @@ CREATE TABLE IF NOT EXISTS usuarios (
         ON UPDATE CASCADE
 );
 
--- As tabelas abaixo já ficam preparadas para o tema Biblioteca Virtual.
--- O CRUD delas pode ser desenvolvido na próxima etapa da disciplina.
 CREATE TABLE IF NOT EXISTS livros (
     id_livro        BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     titulo          VARCHAR(255) NOT NULL,
@@ -50,9 +48,16 @@ CREATE TABLE IF NOT EXISTS livros (
     quantidade      INT UNSIGNED NOT NULL DEFAULT 0,
     isbn            VARCHAR(20) UNIQUE,
     editora         VARCHAR(150),
+    capa            VARCHAR(255),
+    ativo           TINYINT(1) NOT NULL DEFAULT 1,
     criado_em       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     atualizado_em   TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
+
+-- Se a tabela livros já existia de uma versão anterior, estas linhas acrescentam
+-- apenas os campos novos usados no CRUD do Capítulo 18.
+ALTER TABLE livros ADD COLUMN IF NOT EXISTS capa VARCHAR(255) NULL;
+ALTER TABLE livros ADD COLUMN IF NOT EXISTS ativo TINYINT(1) NOT NULL DEFAULT 1;
 
 CREATE TABLE IF NOT EXISTS emprestimos (
     id_emprestimo       BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

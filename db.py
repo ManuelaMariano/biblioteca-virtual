@@ -3,6 +3,7 @@ import os
 from dotenv import load_dotenv
 from mysql.connector import Error, pooling
 
+# Lê o arquivo .env e coloca cada linha dele nas variáveis de ambiente do programa.
 load_dotenv()
 
 if os.getenv('DB_NAME') is None:
@@ -19,8 +20,8 @@ CONFIGURACAO = {
         'STRICT_TRANS_TABLES,NO_ZERO_DATE,'
         'ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'
     ),
-    'time_zone': '-03:00',
-    'use_pure': True,
+    'time_zone': '-03:00',  # horário de Brasília, igual em qualquer computador
+    'use_pure': True,  # conector em Python puro, evita erros com XAMPP e MySQL juntos
 }
 
 pool = pooling.MySQLConnectionPool(pool_name='biblioteca_pool', pool_size=5, **CONFIGURACAO)

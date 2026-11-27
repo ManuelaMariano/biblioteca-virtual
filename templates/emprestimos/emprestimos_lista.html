@@ -1,0 +1,71 @@
+{% extends 'layout/base_menu.html' %}
+
+{% block titulo_aba %}{{ titulo }} — Biblioteca Virtual{% endblock %}
+
+{% block conteudo %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h2 mb-0">{{ titulo }}</h1>
+    <a href="{{ url_for('inserir_emprestimo') }}" class="btn btn-primary">Novo empréstimo</a>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-striped table-hover align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Código</th>
+          <th>Usuário</th>
+          <th>Livro</th>
+          <th>Empréstimo</th>
+          <th>Prevista</th>
+          <th>Devolução</th>
+          <th>Status</th>
+          <th class="text-end">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for emprestimo in emprestimos %}
+        <tr>
+          <td>{{ emprestimo.id_emprestimo }}</td>
+          <td>{{ emprestimo.usuario }}</td>
+          <td>{{ emprestimo.livro }}</td>
+          <td>{{ emprestimo.data_emprestimo|data_br }}</td>
+          <td>{{ emprestimo.devolucao_prevista|data_br }}</td>
+          <td>{{ emprestimo.data_devolucao|data_br }}</td>
+          <td>
+            {% if emprestimo.status == 'Devolvido' %}
+              <span class="badge text-bg-success">Devolvido</span>
+            {% else %}
+              <span class="badge text-bg-warning">Em andamento</span>
+            {% endif %}
+          </td>
+          <td class="text-end text-nowrap">
+            <a href="{{ url_for('editar_emprestimo', id_emprestimo=emprestimo.id_emprestimo) }}" class="btn btn-sm btn-warning" title="Editar">
+              <i class="bi bi-pencil-square"></i>
+            </a>
+
+            {% if emprestimo.status != 'Devolvido' %}
+            <form action="{{ url_for('devolver_emprestimo', id_emprestimo=emprestimo.id_emprestimo) }}" method="post" class="d-inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-sm btn-success" title="Registrar devolução" onclick="return confirm('Registrar a devolução deste livro?')">
+                <i class="bi bi-check-lg"></i>
+              </button>
+            </form>
+            {% endif %}
+
+            <form action="{{ url_for('excluir_emprestimo', id_emprestimo=emprestimo.id_emprestimo) }}" method="post" class="d-inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-sm btn-danger" title="Excluir" onclick="return confirm('Excluir este empréstimo?')">
+                <i class="bi bi-trash"></i>
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" class="text-center text-body-secondary py-4">Nenhum empréstimo cadastrado ainda.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

@@ -1,0 +1,11 @@
+{% extends 'layout/base_limpa.html' %}
+
+{% block titulo_aba %}Arquivo grande demais — Biblioteca Virtual{% endblock %}
+
+{% block conteudo %}
+  <div class="text-center py-5">
+    <h1 class="display-1">413</h1>
+    <p class="lead">O arquivo enviado é grande demais. A foto pode ter até 2 MB.</p>
+    <a href="{{ url_for('listar_livros') }}" class="btn btn-primary">Voltar para os livros</a>
+  </div>
+{% endblock %}

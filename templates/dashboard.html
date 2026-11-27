@@ -3,44 +3,41 @@
 {% block titulo_aba %}{{ titulo }}{% endblock %}
 
 {% block conteudo %}
-<h1>{{ titulo }}</h1>
-<p class="lead">O Flask está conectado ao banco <strong>bibliotecavirtual</strong>.</p>
+  <h1>{{ titulo }}</h1>
+  <p class="lead">O Flask está conectado ao banco <strong>bibliotecavirtual</strong>.</p>
 
-<div class="row g-3 mb-4">
-  <div class="col-sm-6 col-lg-3">
-    <div class="card text-center h-100">
-      <div class="card-body">
-        <p class="display-5 mb-0">{{ total_perfis }}</p>
-        <p class="text-body-secondary mb-0">perfis</p>
+  <div class="row g-3">
+    <div class="col-sm-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <p class="display-5 mb-0">{{ total_perfis }}</p>
+          <p class="text-body-secondary mb-0">perfis</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <p class="display-5 mb-0">{{ total_usuarios }}</p>
+          <p class="text-body-secondary mb-0">usuários</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <p class="display-5 mb-0">{{ total_livros }}</p>
+          <p class="text-body-secondary mb-0">livros</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <p class="display-5 mb-0">{{ total_emprestimos }}</p>
+          <p class="text-body-secondary mb-0">empréstimos em andamento</p>
+        </div>
       </div>
     </div>
   </div>
-
-  <div class="col-sm-6 col-lg-3">
-    <div class="card text-center h-100">
-      <div class="card-body">
-        <p class="display-5 mb-0">{{ total_usuarios }}</p>
-        <p class="text-body-secondary mb-0">usuários</p>
-      </div>
-    </div>
-  </div>
-
-  <div class="col-sm-6 col-lg-3">
-    <div class="card text-center h-100">
-      <div class="card-body">
-        <i class="bi bi-book fs-1"></i>
-        <p class="text-body-secondary mb-0">Livros: tela pronta para o próximo CRUD</p>
-      </div>
-    </div>
-  </div>
-
-  <div class="col-sm-6 col-lg-3">
-    <div class="card text-center h-100">
-      <div class="card-body">
-        <i class="bi bi-journal-arrow-up fs-1"></i>
-        <p class="text-body-secondary mb-0">Empréstimos: tela pronta para a próxima etapa</p>
-      </div>
-    </div>
-  </div>
-</div>
 {% endblock %}

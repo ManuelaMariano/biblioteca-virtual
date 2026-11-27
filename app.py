@@ -1,5 +1,5 @@
 import os
-from datetime import datetime
+import uuid
 
 from dotenv import load_dotenv
 from flask import Flask, abort, flash, redirect, render_template, request, session, url_for
@@ -8,16 +8,26 @@ from mysql.connector import Error
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from db import execute_insert, execute_one, execute_query
+from validacoes.validacoes_emprestimo import validar_emprestimo
+from validacoes.validacoes_livro import CATEGORIAS, extensao_da_capa, validar_livro
+from validacoes.validacoes_perfil import validar_perfil
+from validacoes.validacoes_usuario import UFS, formatar_cep, formatar_celular, formatar_cpf, validar_usuario
 
 load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY')
 
-# Liga a proteção CSRF: todo formulário POST do sistema vai precisar do token.
+# Liga a proteção CSRF: todo formulário POST do sistema vai precisar do token
 CSRFProtect(app)
 
-# A senha fica fora deste SELECT de propósito: só a rota de login lê o hash.
+# As capas dos livros ficam em static/uploads. O Flask recusa (erro 413) pedidos com mais de 2 MB.
+PASTA_UPLOADS = os.path.join(app.root_path, 'static', 'uploads')
+app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024
+
+os.makedirs(PASTA_UPLOADS, exist_ok=True)
+
+# As colunas que as telas de usuário leem. A senha fica de fora de propósito.
 SELECT_USUARIO = (
     'SELECT u.id_usuario, u.nome, u.email, u.celular, u.data_nascimento, u.cpf, '
     'u.perfil_id, u.cep, u.endereco, u.numero, u.complemento, u.cidade, u.estado, '
@@ -26,293 +36,22 @@ SELECT_USUARIO = (
     'JOIN perfis p ON p.id_perfil = u.perfil_id'
 )
 
-
-# ============================================================================== 
-# VALIDAÇÕES
-# ============================================================================== 
-
-UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA',
-       'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO']
-
-
-def validar_perfil(nome, descricao, id_perfil=0):
-    erros = []
-
-    if not nome:
-        erros.append('Informe o nome do perfil.')
-    elif len(nome) < 3:
-        erros.append('O nome deve ter pelo menos 3 caracteres.')
-    elif len(nome) > 100:
-        erros.append('O nome deve ter no máximo 100 caracteres.')
-
-    if descricao and len(descricao) > 255:
-        erros.append('A descrição deve ter no máximo 255 caracteres.')
-
-    if not erros:
-        existente = execute_one(
-            'SELECT id_perfil FROM perfis WHERE nome = %s AND id_perfil <> %s',
-            (nome, id_perfil),
-        )
-        if existente:
-            erros.append('Já existe um perfil com este nome.')
-
-    return erros
-
-
-def so_digitos(texto):
-    resultado = ''
-    for letra in texto:
-        if letra in '0123456789':
-            resultado = resultado + letra
-    return resultado
-
-
-def formatar_celular(celular):
-    if not celular:
-        return None
-
-    digitos = so_digitos(celular)
-    if len(digitos) == 11:
-        return f'({digitos[0:2]}) {digitos[2:7]}-{digitos[7:11]}'
-
-    return f'({digitos[0:2]}) {digitos[2:6]}-{digitos[6:10]}'
-
-
-def formatar_cpf(cpf):
-    if not cpf:
-        return None
-
-    digitos = so_digitos(cpf)
-    return f'{digitos[0:3]}.{digitos[3:6]}.{digitos[6:9]}-{digitos[9:11]}'
-
-
-def formatar_cep(cep):
-    if not cep:
-        return None
-
-    digitos = so_digitos(cep)
-    return f'{digitos[0:5]}-{digitos[5:8]}'
-
-
-def calcular_digito_cpf(digitos, quantidade):
-    soma = 0
-    for posicao in range(quantidade):
-        peso = quantidade + 1 - posicao
-        soma = soma + int(digitos[posicao]) * peso
-
-    resto = (soma * 10) % 11
-    if resto == 10:
-        resto = 0
-
-    return resto
-
-
-def validar_nome(nome):
-    if not nome:
-        return 'Informe o nome do usuário.'
-    if len(nome) < 3:
-        return 'O nome deve ter pelo menos 3 caracteres.'
-    if len(nome) > 255:
-        return 'O nome deve ter no máximo 255 caracteres.'
-    return None
-
-
-def validar_email(email, id_usuario):
-    mensagem = 'Informe um e-mail válido, por exemplo nome@dominio.com.br.'
-
-    if not email:
-        return 'Informe o e-mail.'
-    if len(email) > 255:
-        return 'O e-mail deve ter no máximo 255 caracteres.'
-    if ' ' in email or email.count('@') != 1:
-        return mensagem
-
-    antes, depois = email.split('@')
-    if antes == '' or '.' not in depois:
-        return mensagem
-    if depois.startswith('.') or depois.endswith('.'):
-        return mensagem
-
-    existente = execute_one(
-        'SELECT id_usuario FROM usuarios WHERE email = %s AND id_usuario <> %s',
-        (email, id_usuario),
-    )
-    if existente:
-        return 'Já existe um usuário com este e-mail.'
-
-    return None
-
-
-def validar_senha(senha, confirmacao):
-    if len(senha) < 8:
-        return 'A senha deve ter pelo menos 8 caracteres.'
-    if len(senha) > 128:
-        return 'A senha deve ter no máximo 128 caracteres.'
-
-    tem_letra = False
-    tem_numero = False
-    for caractere in senha:
-        if caractere.isalpha():
-            tem_letra = True
-        if caractere in '0123456789':
-            tem_numero = True
-
-    if not tem_letra or not tem_numero:
-        return 'A senha deve ter letras e números.'
-    if senha != confirmacao:
-        return 'A confirmação da senha não confere.'
-
-    return None
-
-
-def validar_perfil_id(perfil_id):
-    try:
-        numero = int(perfil_id)
-    except (ValueError, TypeError):
-        return 'Selecione um perfil.'
-
-    perfil = execute_one('SELECT id_perfil FROM perfis WHERE id_perfil = %s', (numero,))
-    if perfil is None:
-        return 'Selecione um perfil válido.'
-
-    return None
-
-
-def validar_celular(celular):
-    if not celular:
-        return None
-
-    digitos = so_digitos(celular)
-    if len(digitos) != 10 and len(digitos) != 11:
-        return 'Informe o celular com DDD, com 10 ou 11 dígitos.'
-
-    return None
-
-
-def validar_cpf(cpf, id_usuario):
-    if not cpf:
-        return None
-
-    digitos = so_digitos(cpf)
-    if len(digitos) != 11:
-        return 'O CPF deve ter 11 dígitos.'
-    if digitos == digitos[0] * 11:
-        return 'Informe um CPF válido.'
-    if calcular_digito_cpf(digitos, 9) != int(digitos[9]):
-        return 'Informe um CPF válido.'
-    if calcular_digito_cpf(digitos, 10) != int(digitos[10]):
-        return 'Informe um CPF válido.'
-
-    existente = execute_one(
-        'SELECT id_usuario FROM usuarios WHERE cpf = %s AND id_usuario <> %s',
-        (formatar_cpf(cpf), id_usuario),
-    )
-    if existente:
-        return 'Já existe um usuário com este CPF.'
-
-    return None
-
-
-def validar_data_nascimento(texto):
-    if not texto:
-        return None
-
-    try:
-        data = datetime.strptime(texto, '%Y-%m-%d')
-    except ValueError:
-        return 'Informe uma data de nascimento válida.'
-
-    if data > datetime.now():
-        return 'A data de nascimento não pode estar no futuro.'
-    if data.year < 1900:
-        return 'A data de nascimento deve ser a partir de 1900.'
-
-    return None
-
-
-def validar_cep(cep):
-    if not cep:
-        return None
-
-    if len(so_digitos(cep)) != 8:
-        return 'Informe um CEP com 8 dígitos.'
-
-    return None
-
-
-def validar_estado(estado):
-    if not estado:
-        return None
-
-    if estado not in UFS:
-        return 'Selecione um estado válido.'
-
-    return None
-
-
-def validar_tamanho(valor, rotulo, maximo):
-    if valor and len(valor) > maximo:
-        return f'O campo {rotulo} deve ter no máximo {maximo} caracteres.'
-    return None
-
-
-def validar_usuario(dados, id_usuario=0):
-    erros = []
-
-    erro = validar_nome(dados['nome'])
-    if erro:
-        erros.append(erro)
-
-    erro = validar_email(dados['email'], id_usuario)
-    if erro:
-        erros.append(erro)
-
-    if id_usuario == 0 or dados['senha'] or dados['confirmacao']:
-        erro = validar_senha(dados['senha'], dados['confirmacao'])
-        if erro:
-            erros.append(erro)
-
-    erro = validar_perfil_id(dados['perfil_id'])
-    if erro:
-        erros.append(erro)
-
-    erro = validar_celular(dados['celular'])
-    if erro:
-        erros.append(erro)
-
-    erro = validar_cpf(dados['cpf'], id_usuario)
-    if erro:
-        erros.append(erro)
-
-    erro = validar_data_nascimento(dados['data_nascimento'])
-    if erro:
-        erros.append(erro)
-
-    erro = validar_cep(dados['cep'])
-    if erro:
-        erros.append(erro)
-
-    erro = validar_tamanho(dados['endereco'], 'endereço', 255)
-    if erro:
-        erros.append(erro)
-
-    erro = validar_tamanho(dados['numero'], 'número', 20)
-    if erro:
-        erros.append(erro)
-
-    erro = validar_tamanho(dados['complemento'], 'complemento', 100)
-    if erro:
-        erros.append(erro)
-
-    erro = validar_tamanho(dados['cidade'], 'cidade', 100)
-    if erro:
-        erros.append(erro)
-
-    erro = validar_estado(dados['estado'])
-    if erro:
-        erros.append(erro)
-
-    return erros
+# As colunas que as telas de livro leem.
+SELECT_LIVRO = (
+    'SELECT id_livro, titulo, autor, categoria, ano_publicacao, quantidade, isbn, editora, '
+    'capa, ativo, criado_em, atualizado_em '
+    'FROM livros'
+)
+
+# As colunas que as telas de empréstimo leem.
+SELECT_EMPRESTIMO = (
+    'SELECT e.id_emprestimo, e.usuario_id, e.livro_id, e.data_emprestimo, '
+    'e.devolucao_prevista, e.data_devolucao, e.status, e.observacao, e.criado_em, '
+    'u.nome AS usuario, l.titulo AS livro '
+    'FROM emprestimos e '
+    'JOIN usuarios u ON u.id_usuario = e.usuario_id '
+    'JOIN livros l ON l.id_livro = e.livro_id'
+)
 
 
 # ==============================================================================
@@ -341,16 +80,18 @@ def cpf_oculto(cpf):
 
 
 # ==============================================================================
-# PÁGINAS PRINCIPAIS / LOGIN
+# PÁGINAS PRINCIPAIS
 # ==============================================================================
 
 @app.route('/')
 def index():
+    # A raiz não mostra nada: só leva para a tela de login
     return redirect(url_for('login'))
 
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    # Quem já entrou não precisa ver a tela de login
     if 'id_usuario' in session:
         return redirect(url_for('dashboard'))
 
@@ -360,6 +101,7 @@ def login():
         email = request.form.get('email', '').strip().lower()
         senha = request.form.get('senha', '')
 
+        # Só o login lê a coluna senha (o hash)
         usuario = execute_one(
             'SELECT u.id_usuario, u.nome, u.senha, p.nome AS perfil '
             'FROM usuarios u '
@@ -369,6 +111,7 @@ def login():
         )
 
         if usuario is not None and check_password_hash(usuario['senha'], senha):
+            # Guarda na session quem entrou (o cookie assinado pela secret_key)
             session.clear()
             session['id_usuario'] = usuario['id_usuario']
             session['nome'] = usuario['nome']
@@ -376,20 +119,17 @@ def login():
             flash(f'Você entrou como {usuario["nome"]}.', 'success')
             return redirect(url_for('dashboard'))
 
+        # A mesma mensagem para e-mail inexistente e senha errada
         flash('E-mail ou senha incorretos.', 'danger')
-
-
 
     return render_template('login.html', email=email)
 
-@app.route('/recuperar-senha')
-def recuperar_senha():
-    return render_template('recuperar-senha.html')
 
 @app.route('/logout', methods=['POST'])
 def logout():
     session.clear()
     flash('Você saiu do sistema.', 'success')
+
     return redirect(url_for('login'))
 
 
@@ -399,15 +139,19 @@ def dashboard():
         flash('Entre para continuar.', 'warning')
         return redirect(url_for('login'))
 
+    # Conta as linhas de cada tabela para os cartões da Home
     perfis = execute_one('SELECT COUNT(*) AS total FROM perfis')
     usuarios = execute_one('SELECT COUNT(*) AS total FROM usuarios')
-
-    return render_template(
-        'dashboard.html',
-        titulo='Biblioteca Virtual',
-        total_perfis=perfis['total'],
-        total_usuarios=usuarios['total'],
+    livros = execute_one('SELECT COUNT(*) AS total FROM livros')
+    emprestimos = execute_one(
+        "SELECT COUNT(*) AS total FROM emprestimos WHERE status = 'Em andamento'"
     )
+
+    return render_template('dashboard.html', titulo='Biblioteca Virtual',
+                           total_perfis=perfis['total'],
+                           total_usuarios=usuarios['total'],
+                           total_livros=livros['total'],
+                           total_emprestimos=emprestimos['total'])
 
 
 # ==============================================================================
@@ -415,12 +159,12 @@ def dashboard():
 # ==============================================================================
 
 @app.route('/perfis')
-@app.route('/perfis/listar')
 def listar_perfis():
     if 'id_usuario' not in session:
         flash('Entre para continuar.', 'warning')
         return redirect(url_for('login'))
 
+    # Busca a lista de perfis na tabela do banco
     perfis = execute_query(
         'SELECT id_perfil, nome, descricao, criado_em FROM perfis ORDER BY nome',
         fetch=True,
@@ -435,39 +179,52 @@ def inserir_perfil():
         flash('Entre para continuar.', 'warning')
         return redirect(url_for('login'))
 
+    # Inicializa variáveis para cada campo do formulário
     nome = ''
     descricao = ''
 
+    # Executado apenas no envio do formulário (POST)
     if request.method == 'POST':
+        # 1. Coleta os dados do formulário
         nome = request.form.get('nome', '').strip()
+
+        # 'or None' garante que string vazia vire None (gravado como NULL no MySQL)
         descricao = request.form.get('descricao', '').strip() or None
 
+        # -------------------------------------------------------------------------
+        # 2. Validação dos campos
         erros = validar_perfil(nome, descricao)
 
+        # 3. Se houver erros, exibe as mensagens
         if erros:
             for mensagem in erros:
                 flash(mensagem, 'danger')
+
+        # -------------------------------------------------------------------------
+        # 4. Se não houver erros, tenta salvar no banco
         else:
             try:
                 novo_id = execute_insert(
                     'INSERT INTO perfis (nome, descricao) VALUES (%s, %s)',
                     (nome, descricao),
                 )
+
                 flash(f'Perfil "{nome}" cadastrado (código {novo_id}).', 'success')
                 return redirect(url_for('listar_perfis'))
+
+            # Trata concorrência (duplicidade no momento do insert)
             except Error as erro:
                 if erro.errno == 1062:
                     flash('Já existe um perfil com este nome.', 'danger')
                 else:
+                    # Com o raise: Se o MySQL cair, o cabo de rede desconectar ou houver um erro de
+                    # sintaxe no SQL, o Python interrompe a execução imediatamente e mostra o
+                    # Traceback com o erro real no console/log.
                     raise
 
-    return render_template(
-        'perfis/perfil_form.html',
-        acao='criar',
-        id_perfil=None,
-        nome=nome,
-        descricao=descricao,
-    )
+    # Exibe a tela em caso de GET ou se houver erros (de validação ou de nome repetido)
+    return render_template('perfis/perfil_form.html', acao='criar', id_perfil=None,
+                           nome=nome, descricao=descricao)
 
 
 @app.route('/perfis/<int:id_perfil>/editar', methods=['GET', 'POST'])
@@ -476,47 +233,61 @@ def editar_perfil(id_perfil):
         flash('Entre para continuar.', 'warning')
         return redirect(url_for('login'))
 
+    # Busca o perfil pelo código que veio no endereço
     perfil = execute_one(
         'SELECT id_perfil, nome, descricao FROM perfis WHERE id_perfil = %s',
         (id_perfil,),
     )
 
+    # Código que não existe: mostra a página 404
     if perfil is None:
         abort(404)
 
+    # O formulário começa com os valores que estão no banco
     nome = perfil['nome']
     descricao = perfil['descricao']
 
+    # Executado apenas no envio do formulário (POST)
     if request.method == 'POST':
+        # 1. Coleta os dados do formulário
         nome = request.form.get('nome', '').strip()
         descricao = request.form.get('descricao', '').strip() or None
 
+        # -------------------------------------------------------------------------
+        # 2. Validação dos campos (o id_perfil faz o próprio perfil não contar como repetido)
         erros = validar_perfil(nome, descricao, id_perfil)
 
+        # 3. Se houver erros, exibe as mensagens
         if erros:
             for mensagem in erros:
                 flash(mensagem, 'danger')
+
+        # -------------------------------------------------------------------------
+        # 4. Se não houver erros, tenta salvar no banco
         else:
             try:
+                # O WHERE garante que só este perfil seja alterado
                 execute_query(
-                    'UPDATE perfis SET nome = %s, descricao = %s WHERE id_perfil = %s',
+                    'UPDATE perfis SET '
+                    '    nome = %s, '
+                    '    descricao = %s '
+                    'WHERE id_perfil = %s',
                     (nome, descricao, id_perfil),
                 )
+
                 flash(f'Perfil "{nome}" atualizado.', 'success')
                 return redirect(url_for('listar_perfis'))
+
+            # Trata concorrência (duplicidade no momento do update)
             except Error as erro:
                 if erro.errno == 1062:
                     flash('Já existe um perfil com este nome.', 'danger')
                 else:
                     raise
 
-    return render_template(
-        'perfis/perfil_form.html',
-        acao='editar',
-        id_perfil=id_perfil,
-        nome=nome,
-        descricao=descricao,
-    )
+    # Exibe a tela em caso de GET ou se houver erros (de validação ou de nome repetido)
+    return render_template('perfis/perfil_form.html', acao='editar', id_perfil=id_perfil,
+                           nome=nome, descricao=descricao)
 
 
 @app.route('/perfis/<int:id_perfil>/excluir', methods=['POST'])
@@ -525,29 +296,32 @@ def excluir_perfil(id_perfil):
         flash('Entre para continuar.', 'warning')
         return redirect(url_for('login'))
 
+    # Busca o perfil: confirma que ele existe e traz o nome para a mensagem
     perfil = execute_one(
         'SELECT id_perfil, nome FROM perfis WHERE id_perfil = %s',
         (id_perfil,),
     )
 
+    # Código que não existe: mostra a página 404
     if perfil is None:
         abort(404)
 
+    # Conta os usuários do perfil: um perfil em uso não pode ser excluído
     usuarios = execute_one(
         'SELECT COUNT(*) AS total FROM usuarios WHERE perfil_id = %s',
         (id_perfil,),
     )
 
     if usuarios['total'] > 0:
-        flash(
-            f'O perfil "{perfil["nome"]}" tem {usuarios["total"]} usuário(s) e não pode ser excluído.',
-            'danger',
-        )
+        flash(f'O perfil "{perfil["nome"]}" tem {usuarios["total"]} usuário(s) e não pode ser excluído.', 'danger')
         return redirect(url_for('listar_perfis'))
 
     try:
+        # O WHERE garante que só este perfil seja excluído
         execute_query('DELETE FROM perfis WHERE id_perfil = %s', (id_perfil,))
         flash(f'Perfil "{perfil["nome"]}" excluído.', 'success')
+
+    # Trata concorrência (um usuário cadastrado no perfil entre a contagem e o DELETE)
     except Error as erro:
         if erro.errno == 1451:
             flash(f'O perfil "{perfil["nome"]}" está em uso e não pode ser excluído.', 'danger')
@@ -562,13 +336,14 @@ def excluir_perfil(id_perfil):
 # ==============================================================================
 
 @app.route('/usuarios')
-@app.route('/usuarios/listar')
 def listar_usuarios():
     if 'id_usuario' not in session:
         flash('Entre para continuar.', 'warning')
         return redirect(url_for('login'))
 
+    # O SELECT_USUARIO já traz o nome do perfil, pelo JOIN
     usuarios = execute_query(SELECT_USUARIO + ' ORDER BY u.nome', fetch=True)
+
     return render_template('usuarios/usuarios_lista.html', titulo='Usuários', usuarios=usuarios)
 
 
@@ -578,13 +353,15 @@ def inserir_usuario():
         flash('Entre para continuar.', 'warning')
         return redirect(url_for('login'))
 
+    # Com muitos campos, o formulário inteiro fica em um dicionário (vazio no GET)
     dados = {}
 
     if request.method == 'POST':
+        # 1. Coleta os dados do formulário (os opcionais com 'or None')
         dados = {
             'nome': request.form.get('nome', '').strip(),
             'email': request.form.get('email', '').strip().lower(),
-            'senha': request.form.get('senha', ''),
+            'senha': request.form.get('senha', ''),  # a senha não leva strip: espaço pode fazer parte dela
             'confirmacao': request.form.get('confirmacao', ''),
             'perfil_id': request.form.get('perfil_id', ''),
             'celular': request.form.get('celular', '').strip() or None,
@@ -598,6 +375,7 @@ def inserir_usuario():
             'estado': request.form.get('estado', '') or None,
         }
 
+        # 2. A validação recebe o dicionário inteiro
         erros = validar_usuario(dados)
 
         if erros:
@@ -612,8 +390,8 @@ def inserir_usuario():
                     (
                         dados['nome'],
                         dados['email'],
-                        generate_password_hash(dados['senha']),
-                        formatar_celular(dados['celular']),
+                        generate_password_hash(dados['senha']),  # grava o hash, nunca a senha
+                        formatar_celular(dados['celular']),      # celular, CPF e CEP vão formatados
                         dados['data_nascimento'],
                         formatar_cpf(dados['cpf']),
                         dados['perfil_id'],
@@ -625,24 +403,22 @@ def inserir_usuario():
                         dados['estado'],
                     ),
                 )
+
                 flash(f'Usuário "{dados["nome"]}" cadastrado (código {novo_id}).', 'success')
                 return redirect(url_for('listar_usuarios'))
+
+            # Duas colunas UNIQUE: o 1062 pode ser do e-mail ou do CPF
             except Error as erro:
                 if erro.errno == 1062:
                     flash('Já existe um usuário com este e-mail ou este CPF.', 'danger')
                 else:
                     raise
 
+    # As opções do <select> de perfil vêm da tabela perfis
     perfis = execute_query('SELECT id_perfil, nome FROM perfis ORDER BY nome', fetch=True)
 
-    return render_template(
-        'usuarios/usuario_form.html',
-        acao='criar',
-        id_usuario=None,
-        dados=dados,
-        perfis=perfis,
-        ufs=UFS,
-    )
+    return render_template('usuarios/usuario_form.html', acao='criar', id_usuario=None,
+                           dados=dados, perfis=perfis, ufs=UFS)
 
 
 @app.route('/usuarios/<int:id_usuario>')
@@ -670,6 +446,7 @@ def editar_usuario(id_usuario):
     if usuario is None:
         abort(404)
 
+    # No GET, o formulário começa com a linha que veio do banco
     dados = usuario
 
     if request.method == 'POST':
@@ -690,17 +467,28 @@ def editar_usuario(id_usuario):
             'estado': request.form.get('estado', '') or None,
         }
 
+        # O id_usuario faz o próprio usuário não contar como repetido e torna a senha opcional
         erros = validar_usuario(dados, id_usuario)
 
         if erros:
             for mensagem in erros:
                 flash(mensagem, 'danger')
         else:
+            # O UPDATE é montado em partes: a senha só entra se uma nova foi digitada
             sql = (
                 'UPDATE usuarios SET '
-                'nome = %s, email = %s, celular = %s, data_nascimento = %s, cpf = %s, '
-                'perfil_id = %s, cep = %s, endereco = %s, numero = %s, complemento = %s, '
-                'cidade = %s, estado = %s'
+                '    nome = %s, '
+                '    email = %s, '
+                '    celular = %s, '
+                '    data_nascimento = %s, '
+                '    cpf = %s, '
+                '    perfil_id = %s, '
+                '    cep = %s, '
+                '    endereco = %s, '
+                '    numero = %s, '
+                '    complemento = %s, '
+                '    cidade = %s, '
+                '    estado = %s'
             )
             params = [
                 dados['nome'],
@@ -726,8 +514,10 @@ def editar_usuario(id_usuario):
 
             try:
                 execute_query(sql, params)
+
                 flash(f'Usuário "{dados["nome"]}" atualizado.', 'success')
                 return redirect(url_for('listar_usuarios'))
+
             except Error as erro:
                 if erro.errno == 1062:
                     flash('Já existe um usuário com este e-mail ou este CPF.', 'danger')
@@ -736,14 +526,8 @@ def editar_usuario(id_usuario):
 
     perfis = execute_query('SELECT id_perfil, nome FROM perfis ORDER BY nome', fetch=True)
 
-    return render_template(
-        'usuarios/usuario_form.html',
-        acao='editar',
-        id_usuario=id_usuario,
-        dados=dados,
-        perfis=perfis,
-        ufs=UFS,
-    )
+    return render_template('usuarios/usuario_form.html', acao='editar', id_usuario=id_usuario,
+                           dados=dados, perfis=perfis, ufs=UFS)
 
 
 @app.route('/usuarios/<int:id_usuario>/excluir', methods=['POST'])
@@ -752,6 +536,7 @@ def excluir_usuario(id_usuario):
         flash('Entre para continuar.', 'warning')
         return redirect(url_for('login'))
 
+    # Quem está logado não pode excluir a si mesmo
     if id_usuario == session['id_usuario']:
         flash('Você não pode excluir o seu próprio usuário.', 'danger')
         return redirect(url_for('listar_usuarios'))
@@ -764,58 +549,464 @@ def excluir_usuario(id_usuario):
     if usuario is None:
         abort(404)
 
-    execute_query('DELETE FROM usuarios WHERE id_usuario = %s', (id_usuario,))
-    flash(f'Usuário "{usuario["nome"]}" excluído.', 'success')
+    # Nenhuma tabela depende de usuarios: não há contagem nem erro 1451
+    try:
+        execute_query('DELETE FROM usuarios WHERE id_usuario = %s', (id_usuario,))
+        flash(f'Usuário "{usuario["nome"]}" excluído.', 'success')
+    except Error as erro:
+        if erro.errno == 1451:
+            flash('Este usuário possui empréstimos registrados e não pode ser excluído.', 'danger')
+        else:
+            raise
+
     return redirect(url_for('listar_usuarios'))
 
 
 # ==============================================================================
-# LIVROS — telas mantidas como etapa demonstrativa até o CRUD da próxima aula
+# LIVROS
 # ==============================================================================
 
-@app.route('/livros/listar')
+@app.route('/livros')
 def listar_livros():
     if 'id_usuario' not in session:
         flash('Entre para continuar.', 'warning')
         return redirect(url_for('login'))
-    return render_template('livros/livros-listar.html')
+
+    livros = execute_query(SELECT_LIVRO + ' ORDER BY titulo', fetch=True)
+    return render_template('livros/livros_lista.html', titulo='Livros', livros=livros)
 
 
-@app.route('/livros/inserir')
+def salvar_capa(capa):
+    # O arquivo ganha um nome novo e único; o banco guarda o caminho relativo à pasta static.
+    nome_arquivo = uuid.uuid4().hex + '.' + extensao_da_capa(capa.filename)
+    capa.save(os.path.join(PASTA_UPLOADS, nome_arquivo))
+    return 'uploads/' + nome_arquivo
+
+
+def apagar_capa(caminho):
+    if caminho is None:
+        return
+
+    arquivo = os.path.join(app.root_path, 'static', caminho)
+    if os.path.exists(arquivo):
+        os.remove(arquivo)
+
+
+@app.route('/livros/inserir', methods=['GET', 'POST'])
 def inserir_livro():
     if 'id_usuario' not in session:
         flash('Entre para continuar.', 'warning')
         return redirect(url_for('login'))
-    return render_template('livros/livros-form.html')
+
+    dados = {'quantidade': 0, 'ativo': 1}
+
+    if request.method == 'POST':
+        dados = {
+            'titulo': request.form.get('titulo', '').strip(),
+            'autor': request.form.get('autor', '').strip(),
+            'categoria': request.form.get('categoria', '') or None,
+            'ano_publicacao': request.form.get('ano_publicacao', '').strip() or None,
+            'quantidade': request.form.get('quantidade', '').strip(),
+            'isbn': request.form.get('isbn', '').strip() or None,
+            'editora': request.form.get('editora', '').strip() or None,
+        }
+
+        if request.form.get('ativo') == '1':
+            dados['ativo'] = 1
+        else:
+            dados['ativo'] = 0
+
+        capa = request.files.get('capa')
+        if capa is not None and capa.filename == '':
+            capa = None
+
+        erros = validar_livro(dados, capa)
+
+        if erros:
+            for mensagem in erros:
+                flash(mensagem, 'danger')
+        else:
+            caminho_capa = None
+            if capa is not None:
+                caminho_capa = salvar_capa(capa)
+
+            try:
+                novo_id = execute_insert(
+                    'INSERT INTO livros (titulo, autor, categoria, ano_publicacao, quantidade, isbn, editora, capa, ativo) '
+                    'VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)',
+                    (
+                        dados['titulo'],
+                        dados['autor'],
+                        dados['categoria'],
+                        dados['ano_publicacao'],
+                        int(dados['quantidade']),
+                        dados['isbn'],
+                        dados['editora'],
+                        caminho_capa,
+                        dados['ativo'],
+                    ),
+                )
+                flash(f'Livro "{dados["titulo"]}" cadastrado (código {novo_id}).', 'success')
+                return redirect(url_for('listar_livros'))
+            except Error as erro:
+                if caminho_capa is not None:
+                    apagar_capa(caminho_capa)
+                if erro.errno == 1062:
+                    flash('Já existe um livro com este ISBN.', 'danger')
+                else:
+                    raise
+
+    return render_template(
+        'livros/livro_form.html',
+        acao='criar',
+        id_livro=None,
+        dados=dados,
+        categorias=CATEGORIAS,
+        capa_atual=None,
+    )
 
 
-# ==============================================================================
-# EMPRÉSTIMOS — telas mantidas como etapa demonstrativa até o CRUD da próxima aula
-# ==============================================================================
+@app.route('/livros/<int:id_livro>/editar', methods=['GET', 'POST'])
+def editar_livro(id_livro):
+    if 'id_usuario' not in session:
+        flash('Entre para continuar.', 'warning')
+        return redirect(url_for('login'))
 
-@app.route('/emprestimos/listar')
+    livro = execute_one(SELECT_LIVRO + ' WHERE id_livro = %s', (id_livro,))
+
+    if livro is None:
+        abort(404)
+
+    dados = livro
+
+    if request.method == 'POST':
+        dados = {
+            'titulo': request.form.get('titulo', '').strip(),
+            'autor': request.form.get('autor', '').strip(),
+            'categoria': request.form.get('categoria', '') or None,
+            'ano_publicacao': request.form.get('ano_publicacao', '').strip() or None,
+            'quantidade': request.form.get('quantidade', '').strip(),
+            'isbn': request.form.get('isbn', '').strip() or None,
+            'editora': request.form.get('editora', '').strip() or None,
+        }
+
+        if request.form.get('ativo') == '1':
+            dados['ativo'] = 1
+        else:
+            dados['ativo'] = 0
+
+        capa = request.files.get('capa')
+        if capa is not None and capa.filename == '':
+            capa = None
+
+        erros = validar_livro(dados, capa)
+
+        if erros:
+            for mensagem in erros:
+                flash(mensagem, 'danger')
+        else:
+            sql = (
+                'UPDATE livros SET '
+                'titulo = %s, autor = %s, categoria = %s, ano_publicacao = %s, '
+                'quantidade = %s, isbn = %s, editora = %s, ativo = %s'
+            )
+            params = [
+                dados['titulo'],
+                dados['autor'],
+                dados['categoria'],
+                dados['ano_publicacao'],
+                int(dados['quantidade']),
+                dados['isbn'],
+                dados['editora'],
+                dados['ativo'],
+            ]
+
+            trocou_capa = False
+            nova_capa = None
+            if capa is not None:
+                nova_capa = salvar_capa(capa)
+                sql += ', capa = %s'
+                params.append(nova_capa)
+                trocou_capa = True
+            elif request.form.get('remover_capa') == '1':
+                sql += ', capa = %s'
+                params.append(None)
+                trocou_capa = True
+
+            sql += ' WHERE id_livro = %s'
+            params.append(id_livro)
+
+            try:
+                execute_query(sql, params)
+                if trocou_capa:
+                    apagar_capa(livro['capa'])
+                flash(f'Livro "{dados["titulo"]}" atualizado.', 'success')
+                return redirect(url_for('listar_livros'))
+            except Error as erro:
+                if nova_capa is not None:
+                    apagar_capa(nova_capa)
+                if erro.errno == 1062:
+                    flash('Já existe um livro com este ISBN.', 'danger')
+                else:
+                    raise
+
+    return render_template(
+        'livros/livro_form.html',
+        acao='editar',
+        id_livro=id_livro,
+        dados=dados,
+        categorias=CATEGORIAS,
+        capa_atual=livro['capa'],
+    )
+
+
+@app.route('/livros/<int:id_livro>/excluir', methods=['POST'])
+def excluir_livro(id_livro):
+    if 'id_usuario' not in session:
+        flash('Entre para continuar.', 'warning')
+        return redirect(url_for('login'))
+
+    livro = execute_one(
+        'SELECT id_livro, titulo, capa FROM livros WHERE id_livro = %s',
+        (id_livro,),
+    )
+
+    if livro is None:
+        abort(404)
+
+    try:
+        execute_query('DELETE FROM livros WHERE id_livro = %s', (id_livro,))
+        apagar_capa(livro['capa'])
+        flash(f'Livro "{livro["titulo"]}" excluído.', 'success')
+    except Error as erro:
+        if erro.errno == 1451:
+            flash('Este livro possui empréstimos registrados e não pode ser excluído.', 'danger')
+        else:
+            raise
+
+    return redirect(url_for('listar_livros'))
+
+
+# ============================================================================== 
+# EMPRÉSTIMOS
+# ============================================================================== 
+
+@app.route('/emprestimos')
 def listar_emprestimos():
     if 'id_usuario' not in session:
         flash('Entre para continuar.', 'warning')
         return redirect(url_for('login'))
-    return render_template('emprestimos/emprestimos-listar.html')
+
+    emprestimos = execute_query(
+        SELECT_EMPRESTIMO + ' ORDER BY e.id_emprestimo DESC',
+        fetch=True,
+    )
+
+    return render_template(
+        'emprestimos/emprestimos_lista.html',
+        titulo='Empréstimos',
+        emprestimos=emprestimos,
+    )
 
 
-@app.route('/emprestimos/inserir')
+@app.route('/emprestimos/inserir', methods=['GET', 'POST'])
 def inserir_emprestimo():
     if 'id_usuario' not in session:
         flash('Entre para continuar.', 'warning')
         return redirect(url_for('login'))
-    return render_template('emprestimos/emprestimos-form.html')
+
+    dados = {}
+
+    if request.method == 'POST':
+        dados = {
+            'usuario_id': request.form.get('usuario_id', ''),
+            'livro_id': request.form.get('livro_id', ''),
+            'data_emprestimo': request.form.get('data_emprestimo', ''),
+            'devolucao_prevista': request.form.get('devolucao_prevista', ''),
+            'observacao': request.form.get('observacao', '').strip() or None,
+        }
+
+        erros = validar_emprestimo(dados)
+
+        if erros:
+            for mensagem in erros:
+                flash(mensagem, 'danger')
+        else:
+            novo_id = execute_insert(
+                'INSERT INTO emprestimos '
+                '(usuario_id, livro_id, data_emprestimo, devolucao_prevista, status, observacao) '
+                "VALUES (%s, %s, %s, %s, 'Em andamento', %s)",
+                (
+                    dados['usuario_id'],
+                    dados['livro_id'],
+                    dados['data_emprestimo'],
+                    dados['devolucao_prevista'],
+                    dados['observacao'],
+                ),
+            )
+
+            execute_query(
+                'UPDATE livros SET quantidade = quantidade - 1 WHERE id_livro = %s',
+                (dados['livro_id'],),
+            )
+
+            flash(f'Empréstimo cadastrado (código {novo_id}).', 'success')
+            return redirect(url_for('listar_emprestimos'))
+
+    usuarios = execute_query(
+        'SELECT id_usuario, nome FROM usuarios ORDER BY nome',
+        fetch=True,
+    )
+    livros = execute_query(
+        'SELECT id_livro, titulo, quantidade FROM livros '
+        'WHERE ativo = 1 AND quantidade > 0 ORDER BY titulo',
+        fetch=True,
+    )
+
+    return render_template(
+        'emprestimos/emprestimo_form.html',
+        acao='criar',
+        id_emprestimo=None,
+        dados=dados,
+        usuarios=usuarios,
+        livros=livros,
+        livro_atual=None,
+    )
+
+
+@app.route('/emprestimos/<int:id_emprestimo>/editar', methods=['GET', 'POST'])
+def editar_emprestimo(id_emprestimo):
+    if 'id_usuario' not in session:
+        flash('Entre para continuar.', 'warning')
+        return redirect(url_for('login'))
+
+    emprestimo = execute_one(
+        SELECT_EMPRESTIMO + ' WHERE e.id_emprestimo = %s',
+        (id_emprestimo,),
+    )
+
+    if emprestimo is None:
+        abort(404)
+
+    dados = emprestimo
+
+    if request.method == 'POST':
+        dados = {
+            'usuario_id': request.form.get('usuario_id', ''),
+            'livro_id': emprestimo['livro_id'],
+            'data_emprestimo': request.form.get('data_emprestimo', ''),
+            'devolucao_prevista': request.form.get('devolucao_prevista', ''),
+            'observacao': request.form.get('observacao', '').strip() or None,
+        }
+
+        erros = validar_emprestimo(dados, verificar_disponibilidade=False)
+
+        if erros:
+            for mensagem in erros:
+                flash(mensagem, 'danger')
+        else:
+            execute_query(
+                'UPDATE emprestimos SET '
+                'usuario_id = %s, data_emprestimo = %s, devolucao_prevista = %s, observacao = %s '
+                'WHERE id_emprestimo = %s',
+                (
+                    dados['usuario_id'],
+                    dados['data_emprestimo'],
+                    dados['devolucao_prevista'],
+                    dados['observacao'],
+                    id_emprestimo,
+                ),
+            )
+
+            flash('Empréstimo atualizado.', 'success')
+            return redirect(url_for('listar_emprestimos'))
+
+    usuarios = execute_query(
+        'SELECT id_usuario, nome FROM usuarios ORDER BY nome',
+        fetch=True,
+    )
+
+    return render_template(
+        'emprestimos/emprestimo_form.html',
+        acao='editar',
+        id_emprestimo=id_emprestimo,
+        dados=dados,
+        usuarios=usuarios,
+        livros=[],
+        livro_atual=emprestimo,
+    )
+
+
+@app.route('/emprestimos/<int:id_emprestimo>/devolver', methods=['POST'])
+def devolver_emprestimo(id_emprestimo):
+    if 'id_usuario' not in session:
+        flash('Entre para continuar.', 'warning')
+        return redirect(url_for('login'))
+
+    emprestimo = execute_one(
+        'SELECT id_emprestimo, livro_id, status FROM emprestimos WHERE id_emprestimo = %s',
+        (id_emprestimo,),
+    )
+
+    if emprestimo is None:
+        abort(404)
+
+    if emprestimo['status'] == 'Devolvido':
+        flash('Este empréstimo já foi devolvido.', 'warning')
+        return redirect(url_for('listar_emprestimos'))
+
+    execute_query(
+        "UPDATE emprestimos SET status = 'Devolvido', data_devolucao = CURDATE() "
+        'WHERE id_emprestimo = %s',
+        (id_emprestimo,),
+    )
+    execute_query(
+        'UPDATE livros SET quantidade = quantidade + 1 WHERE id_livro = %s',
+        (emprestimo['livro_id'],),
+    )
+
+    flash('Devolução registrada com sucesso.', 'success')
+    return redirect(url_for('listar_emprestimos'))
+
+
+@app.route('/emprestimos/<int:id_emprestimo>/excluir', methods=['POST'])
+def excluir_emprestimo(id_emprestimo):
+    if 'id_usuario' not in session:
+        flash('Entre para continuar.', 'warning')
+        return redirect(url_for('login'))
+
+    emprestimo = execute_one(
+        'SELECT id_emprestimo, livro_id, status FROM emprestimos WHERE id_emprestimo = %s',
+        (id_emprestimo,),
+    )
+
+    if emprestimo is None:
+        abort(404)
+
+    if emprestimo['status'] == 'Em andamento':
+        execute_query(
+            'UPDATE livros SET quantidade = quantidade + 1 WHERE id_livro = %s',
+            (emprestimo['livro_id'],),
+        )
+
+    execute_query('DELETE FROM emprestimos WHERE id_emprestimo = %s', (id_emprestimo,))
+    flash('Empréstimo excluído.', 'success')
+
+    return redirect(url_for('listar_emprestimos'))
 
 
 # ==============================================================================
-# TELAS DE ERRO
+# TELAS DE ERROS
 # ==============================================================================
 
 @app.errorhandler(404)
 def pagina_nao_encontrada(erro):
     return render_template('404.html'), 404
+
+
+@app.errorhandler(413)
+def arquivo_grande_demais(erro):
+    return render_template('413.html'), 413
 
 
 @app.errorhandler(500)

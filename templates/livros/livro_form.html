@@ -1,0 +1,92 @@
+{% extends 'layout/base_menu.html' %}
+
+{% block titulo_aba %}{{ 'Editar livro' if acao == 'editar' else 'Novo livro' }} — Biblioteca Virtual{% endblock %}
+
+{% block conteudo %}
+  {% if acao == 'editar' %}
+    {% set destino = url_for('editar_livro', id_livro=id_livro) %}
+  {% else %}
+    {% set destino = url_for('inserir_livro') %}
+  {% endif %}
+
+  <h1 class="h2 mb-4">{{ 'Editar livro' if acao == 'editar' else 'Novo livro' }}</h1>
+
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="card">
+        <div class="card-body">
+          <form action="{{ destino }}" method="post" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="titulo" class="form-label">Título</label>
+                <input type="text" class="form-control" id="titulo" name="titulo" value="{{ dados.titulo or '' }}" required maxlength="255">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="autor" class="form-label">Autor</label>
+                <input type="text" class="form-control" id="autor" name="autor" value="{{ dados.autor or '' }}" required maxlength="255">
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-4 mb-3">
+                <label for="categoria" class="form-label">Categoria (opcional)</label>
+                <select class="form-select" id="categoria" name="categoria">
+                  <option value="">Sem categoria</option>
+                  {% for categoria in categorias %}
+                    <option value="{{ categoria }}" {% if dados.categoria == categoria %}selected{% endif %}>{{ categoria }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="ano_publicacao" class="form-label">Ano de publicação</label>
+                <input type="number" class="form-control" id="ano_publicacao" name="ano_publicacao" value="{{ dados.ano_publicacao or '' }}" min="1000" max="2100">
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="quantidade" class="form-label">Quantidade</label>
+                <input type="number" class="form-control" id="quantidade" name="quantidade" value="{{ dados.quantidade }}" required min="0" max="1000000" step="1">
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="isbn" class="form-label">ISBN (opcional)</label>
+                <input type="text" class="form-control" id="isbn" name="isbn" value="{{ dados.isbn or '' }}" maxlength="20">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="editora" class="form-label">Editora (opcional)</label>
+                <input type="text" class="form-control" id="editora" name="editora" value="{{ dados.editora or '' }}" maxlength="150">
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label for="capa" class="form-label">{{ 'Trocar a capa (opcional)' if capa_atual else 'Capa (opcional)' }}</label>
+              {% if capa_atual %}
+                <div class="d-flex align-items-center gap-3 mb-2">
+                  <img src="{{ url_for('static', filename=capa_atual) }}" alt="Capa atual do livro" class="capa-livro">
+                  <div class="form-check mb-0">
+                    <input class="form-check-input" type="checkbox" id="remover_capa" name="remover_capa" value="1">
+                    <label class="form-check-label" for="remover_capa">Remover a capa atual</label>
+                  </div>
+                </div>
+              {% endif %}
+              <input type="file" class="form-control" id="capa" name="capa" accept=".jpg,.jpeg,.png,.webp">
+              <div class="form-text">Arquivo jpg, jpeg, png ou webp, com até 2 MB.</div>
+            </div>
+
+            <div class="form-check form-switch mb-4">
+              <input class="form-check-input" type="checkbox" role="switch" id="ativo" name="ativo" value="1" {% if dados.ativo == 1 %}checked{% endif %}>
+              <label class="form-check-label" for="ativo">Livro ativo</label>
+            </div>
+
+            <div class="d-flex justify-content-between gap-2">
+              <a href="{{ url_for('listar_livros') }}" class="btn btn-outline-secondary">Cancelar</a>
+              <button type="submit" class="btn btn-primary">{{ 'Salvar alterações' if acao == 'editar' else 'Salvar livro' }}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

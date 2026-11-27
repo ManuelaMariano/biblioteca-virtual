@@ -1,0 +1,78 @@
+{% extends 'layout/base_menu.html' %}
+
+{% block titulo_aba %}{{ 'Editar empréstimo' if acao == 'editar' else 'Novo empréstimo' }} — Biblioteca Virtual{% endblock %}
+
+{% block conteudo %}
+  {% if acao == 'editar' %}
+    {% set destino = url_for('editar_emprestimo', id_emprestimo=id_emprestimo) %}
+  {% else %}
+    {% set destino = url_for('inserir_emprestimo') %}
+  {% endif %}
+
+  <h1 class="h2 mb-4">{{ 'Editar empréstimo' if acao == 'editar' else 'Novo empréstimo' }}</h1>
+
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="card">
+        <div class="card-body">
+          <form action="{{ destino }}" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="usuario_id" class="form-label">Usuário</label>
+                <select class="form-select" id="usuario_id" name="usuario_id" required>
+                  <option value="">Selecione...</option>
+                  {% for usuario in usuarios %}
+                    <option value="{{ usuario.id_usuario }}" {% if dados.usuario_id|string == usuario.id_usuario|string %}selected{% endif %}>{{ usuario.nome }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label for="livro_id" class="form-label">Livro</label>
+                {% if acao == 'editar' %}
+                  <input type="text" class="form-control" value="{{ livro_atual.livro }}" disabled>
+                  <input type="hidden" name="livro_id" value="{{ livro_atual.livro_id }}">
+                  <div class="form-text">O livro não é alterado depois que o empréstimo é registrado.</div>
+                {% else %}
+                  <select class="form-select" id="livro_id" name="livro_id" required>
+                    <option value="">Selecione...</option>
+                    {% for livro in livros %}
+                      <option value="{{ livro.id_livro }}" {% if dados.livro_id|string == livro.id_livro|string %}selected{% endif %}>
+                        {{ livro.titulo }} ({{ livro.quantidade }} disponível/is)
+                      </option>
+                    {% endfor %}
+                  </select>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="data_emprestimo" class="form-label">Data do empréstimo</label>
+                <input type="date" class="form-control" id="data_emprestimo" name="data_emprestimo"
+                       value="{{ dados.data_emprestimo or '' }}" required>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="devolucao_prevista" class="form-label">Devolução prevista</label>
+                <input type="date" class="form-control" id="devolucao_prevista" name="devolucao_prevista"
+                       value="{{ dados.devolucao_prevista or '' }}" required>
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <label for="observacao" class="form-label">Observação (opcional)</label>
+              <textarea class="form-control" id="observacao" name="observacao" rows="3" maxlength="255">{{ dados.observacao or '' }}</textarea>
+            </div>
+
+            <div class="d-flex justify-content-between gap-2">
+              <a href="{{ url_for('listar_emprestimos') }}" class="btn btn-outline-secondary">Cancelar</a>
+              <button type="submit" class="btn btn-primary">{{ 'Salvar alterações' if acao == 'editar' else 'Salvar empréstimo' }}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
